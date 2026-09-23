@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Biometric Attendance Tracker (Simulated)</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #171a23;
+    --border: #2a2e3a;
+    --text: #e8e9ee;
+    --muted: #9096a8;
+    --accent: #4f7cff;
+    --green: #2fbf71;
+    --red: #e5484d;
+    --amber: #e0a02c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 2rem 1rem;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 0.95rem; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+  .card h2 { font-size: 1.05rem; margin: 0 0 1rem; }
+  label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem; margin-top: 0.75rem; }
+  select, input[type="text"] {
+    width: 100%;
+    padding: 0.5rem;
+    background: #0f1117;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+  }
+  .methods { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+  .methods button {
+    flex: 1;
+    padding: 0.6rem 0.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #1d212c;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.15s;
+  }
+  .methods button:hover { background: #262b38; }
+  .methods button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .action-row { display: flex; gap: 0.5rem; margin-top: 1rem; }
+  .action-row button {
+    flex: 1;
+    padding: 0.6rem;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  .btn-checkin { background: var(--green); color: #06210f; }
+  .btn-checkout { background: var(--red); color: #2b0708; }
+  .result {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    background: #0f1117;
+    border: 1px solid var(--border);
+    min-height: 1.5rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .result.ok { border-color: var(--green); }
+  .result.fail { border-color: var(--red); }
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
+  .stat-num { font-size: 2rem; font-weight: 700; }
+  .stat-label { color: var(--muted); font-size: 0.85rem; }
+  ul.present-list { list-style: none; padding: 0; margin: 0; max-height: 180px; overflow-y: auto; }
+  ul.present-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  .badge {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+  }
+  .badge.on_time { background: rgba(47,191,113,0.15); color: var(--green); }
+  .badge.late { background: rgba(224,160,44,0.15); color: var(--amber); }
+  .feed { list-style: none; padding: 0; margin: 0; max-height: 260px; overflow-y: auto; }
+  .feed li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .feed li .evtype { color: var(--text); font-weight: 600; }
+  .feed li.success .evtype { color: var(--green); }
+  .feed li.failed .evtype { color: var(--red); }
+  .full-width { grid-column: 1 / -1; }
+  .refresh-note { color: var(--muted); font-size: 0.75rem; margin-top: 0.5rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Biometric Attendance Tracker</h1>
+  <p class="subtitle">
+    Simulated face / fingerprint / voice check-in and check-out. Scans are mocked
+    (random pass/fail + artificial delay) — no real biometric data is captured.
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Sign up a new user</h2>
+      <label for="signup-name">Full name</label>
+      <input type="text" id="signup-name" placeholder="e.g. Talal Ahmed" />
+      <div class="action-row">
+        <button class="btn-checkin" id="signup-btn" style="flex:none; width:100%;">Sign up</button>
+      </div>
+      <div class="result" id="signup-result">Ready.</div>
+    </div>
+
+    <div class="card">
+      <h2>Simulate a scan</h2>
+      <label for="user-select">Employee</label>
+      <select id="user-select"></select>
+
+      <label>Scan method</label>
+      <div class="methods">
+        <button data-method="face" class="method-btn selected">Face</button>
+        <button data-method="fingerprint" class="method-btn">Fingerprint</button>
+        <button data-method="voice" class="method-btn">Voice</button>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-checkin" id="checkin-btn">Check in</button>
+        <button class="btn-checkout" id="checkout-btn">Check out</button>
+      </div>
+
+      <div class="result" id="result">Ready.</div>
+    </div>
+
+    <div class="card">
+      <h2>Live status</h2>
+      <div class="stat-row">
+        <div>
+          <div class="stat-num" id="checked-in-count">0</div>
+          <div class="stat-label">currently checked in</div>
+        </div>
+      </div>
+      <ul class="present-list" id="present-list"></ul>
+      <div class="refresh-note">Auto-refreshes every 3s</div>
+    </div>
+
+    <div class="card full-width">
+      <h2>Recent activity</h2>
+      <ul class="feed" id="feed"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "";
+let selectedMethod = "face";
+
+document.querySelectorAll(".method-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".method-btn").forEach(b => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    selectedMethod = btn.dataset.method;
+  });
+});
+
+async function loadUsers() {
+  const res = await fetch(`${API}/api/users`);
+  const users = await res.json();
+  const select = document.getElementById("user-select");
+  select.innerHTML = users.map(u => `<option value="${u.user_id}">${u.name}</option>`).join("");
+}
+
+function setResult(message, ok) {
+  const el = document.getElementById("result");
+  el.textContent = message;
+  el.classList.remove("ok", "fail");
+  el.classList.add(ok ? "ok" : "fail");
+}
+
+async function doAction(path) {
+  const userId = document.getElementById("user-select").value;
+  setResult("Scanning...", true);
+  try {
+    const res = await fetch(`${API}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, method: selectedMethod })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      const extra = data.status ? ` (${data.status})` : "";
+      setResult(`OK — ${data.name}${extra}, ${data.duration_ms}ms scan [${data.method}]`, true);
+    } else {
+      setResult(`Failed — ${data.reason || data.error || "unknown error"}`, false);
+    }
+  } catch (e) {
+    setResult(`Network error: ${e}`, false);
+  }
+  refreshStatus();
+}
+
+document.getElementById("checkin-btn").addEventListener("click", () => doAction("/api/checkin"));
+document.getElementById("checkout-btn").addEventListener("click", () => doAction("/api/checkout"));
+
+function setSignupResult(message, ok) {
+  const el = document.getElementById("signup-result");
+  el.textContent = message;
+  el.classList.remove("ok", "fail");
+  el.classList.add(ok ? "ok" : "fail");
+}
+
+document.getElementById("signup-btn").addEventListener("click", async () => {
+  const nameInput = document.getElementById("signup-name");
+  const name = nameInput.value.trim();
+  if (!name) {
+    setSignupResult("Enter a name first.", false);
+    return;
+  }
+  setSignupResult("Enrolling...", true);
+  try {
+    const res = await fetch(`${API}/api/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      setSignupResult(`OK — enrolled ${data.name} as ${data.user_id} (${data.duration_ms}ms)`, true);
+      nameInput.value = "";
+      await loadUsers();
+    } else {
+      setSignupResult(`Failed — ${data.reason || data.error || "unknown error"}`, false);
+    }
+  } catch (e) {
+    setSignupResult(`Network error: ${e}`, false);
+  }
+  refreshStatus();
+});
+
+async function refreshStatus() {
+  const res = await fetch(`${API}/api/status`);
+  const data = await res.json();
+  document.getElementById("checked-in-count").textContent = data.checked_in_count;
+
+  const list = document.getElementById("present-list");
+  list.innerHTML = data.checked_in.map(u => `
+    <li>
+      <span>${u.name} <span class="badge ${u.status}">${u.status.replace("_"," ")}</span></span>
+      <span>${u.method}</span>
+    </li>
+  `).join("") || "<li>No one checked in yet.</li>";
+
+  const feed = document.getElementById("feed");
+  feed.innerHTML = data.recent_events.map(ev => {
+    const cls = ev.type.includes("failed") ? "failed" : "success";
+    const time = new Date(ev.timestamp).toLocaleTimeString();
+    return `<li class="${cls}"><span class="evtype">${ev.type}</span> — ${ev.name || ev.user_id} via ${ev.method} · ${time}</li>`;
+  }).join("") || "<li>No activity yet.</li>";
+}
+
+loadUsers();
+refreshStatus();
+setInterval(refreshStatus, 3000);
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "index_patterns": ["attendance-logs-*"],
+  "template": {
+    "settings": {
+      "index.lifecycle.name": "attendance-logs-policy"
+    }
+  }
+}

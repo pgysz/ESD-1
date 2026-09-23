@@ -1,0 +1,22 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # The Flask app runs on the host machine, not in a container, so we reach
+  # it via Docker Desktop's special host.docker.internal hostname.
+  - job_name: "attendance-app"
+    static_configs:
+      - targets: ["host.docker.internal:5000"]
+
+  # Node Exporter runs as a container in this same compose stack, so it is
+  # reachable by its service name.
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # Prometheus can also scrape itself, useful for a basic "is Prometheus
+  # healthy" panel.
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

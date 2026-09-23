@@ -1,0 +1,30 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/attendance-app/app.log
+    # Promote the app's own JSON keys (time, service, severity, message,
+    # request_id) to the top level of the Elasticsearch document instead of
+    # nesting them under a "json" field. This is what makes them directly
+    # searchable/filterable in Kibana.
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.overwrite_keys: true
+
+# ILM is applied to this index pattern via a separate setup step
+# (see observability/elasticsearch/setup-ilm.sh) rather than through
+# Filebeat's own rollover-alias machinery, which keeps this config simple
+# and easy to explain.
+setup.template.enabled: true
+setup.template.name: "attendance-logs"
+setup.template.pattern: "attendance-logs-*"
+setup.ilm.enabled: false
+
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  index: "attendance-logs-%{+yyyy.MM.dd}"
+
+setup.kibana:
+  host: "kibana:5601"
+
+logging.level: info
