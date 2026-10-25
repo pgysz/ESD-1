@@ -1,0 +1,7 @@
+scenario                      HTTP                                    gRPC
+success                       201                                     OK
+unknown user                  404                                     NOT_FOUND
+invalid input                 400                                     INVALID_ARGUMENT
+already checked in            409                                     ALREADY_EXISTS
+repeat, same Idempotency-Key  201 (Idempotent-Replayed: true)         OK (replayed=True)
+... (5 rounds sent in total)

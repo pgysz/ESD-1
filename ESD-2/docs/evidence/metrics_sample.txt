@@ -1,0 +1,22 @@
+## HTTP process: http://localhost:5000/metrics
+currently_checked_in 2.0
+http_requests_total{endpoint="/api/v1/attendance",method="POST",status_code="201"} 1.0
+http_requests_total{endpoint="/api/v1/attendance",method="POST",status_code="409"} 2.0
+http_requests_total{endpoint="/api/v1/attendance",method="POST",status_code="400"} 1.0
+http_request_duration_seconds_count{endpoint="/api/v1/attendance",method="POST"} 4.0
+http_message_size_bytes_count{direction="request",endpoint="/api/v1/attendance"} 4.0
+http_message_size_bytes_sum{direction="request",endpoint="/api/v1/attendance"} 134.0
+http_message_size_bytes_count{direction="response",endpoint="/api/v1/attendance"} 4.0
+http_message_size_bytes_sum{direction="response",endpoint="/api/v1/attendance"} 1208.0
+
+## gRPC process: http://localhost:9102/metrics
+currently_checked_in 2.0
+grpc_server_handled_total{grpc_code="OK",grpc_method="CheckIn"} 1.0
+grpc_server_handled_total{grpc_code="ALREADY_EXISTS",grpc_method="CheckIn"} 1.0
+grpc_server_handled_total{grpc_code="NOT_FOUND",grpc_method="CheckIn"} 1.0
+grpc_server_handled_total{grpc_code="DEADLINE_EXCEEDED",grpc_method="CheckIn"} 1.0
+grpc_server_handling_seconds_count{grpc_method="CheckIn"} 4.0
+grpc_server_message_size_bytes_count{direction="request",grpc_method="CheckIn"} 4.0
+grpc_server_message_size_bytes_sum{direction="request",grpc_method="CheckIn"} 31.0
+grpc_server_message_size_bytes_count{direction="response",grpc_method="CheckIn"} 1.0
+grpc_server_message_size_bytes_sum{direction="response",grpc_method="CheckIn"} 81.0

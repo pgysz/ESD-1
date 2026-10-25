@@ -1,0 +1,60 @@
+### 1. HTTP success: POST /api/v1/attendance
+HTTP/1.1 201 CREATED
+Content-Type: application/json
+Content-Length: 251
+Location: /api/v1/attendance/677b812f-e7da-4b94-a021-aa65c110aef8
+X-Request-ID: http-req-1
+traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-bbe57c2bfe46a74f-01
+
+{
+  "check_in_method": "face",
+  "check_out_method": null,
+  "checked_in_at": "2026-10-20T00:31:19.859600+00:00",
+  "checked_out_at": null,
+  "id": "677b812f-e7da-4b94-a021-aa65c110aef8",
+  "state": "open",
+  "status": "on_time",
+  "user_id": "u12"
+}
+
+### 2. HTTP failure: same user again (new key) -> 409 problem+json
+HTTP/1.1 409 CONFLICT
+Content-Type: application/problem+json
+Content-Length: 292
+X-Request-ID: 5d16c88e-e823-424a-8e3f-dae7870fe65e
+traceparent: 00-cb75cee85b9ff3a0cabe3a08663d5e4f-e56cd057b8d2406a-01
+
+{"type": "https://attendance.local/problems/already-checked-in", "title": "Already checked in", "status": 409, "detail": "This user is already checked in.", "instance": "/api/v1/attendance", "request_id": "5d16c88e-e823-424a-8e3f-dae7870fe65e", "trace_id": "cb75cee85b9ff3a0cabe3a08663d5e4f"}
+
+### 3. HTTP invalid input -> 400 with field errors
+{"type": "https://attendance.local/problems/validation-error", "title": "Invalid request", "status": 400, "detail": "One or more fields are invalid.", "instance": "/api/v1/attendance", "request_id": "8d29803c-0ae9-40d0-acd8-f61691b230ac", "trace_id": "859bc5ccca87b1218c6c8dd54d86c2cf", "errors": [{"field": "method", "message": "must be one of face, fingerprint, voice"}]}
+
+### 4. gRPC success (user u13) with the SAME trace id
+status      : OK
+session_id  : 6379d02c-c283-49a1-a560-6d4ff7d1d2a3
+user_id     : u13
+attendance  : ATTENDANCE_STATUS_ON_TIME
+method      : SCAN_METHOD_FACE
+checked_in  : 2026-10-20T00:31:20.169707+00:00
+replayed    : False
+request_id  : 24461cfab2d74b76
+
+### 5. gRPC failure: u12 was checked in over HTTP -> shared source of truth
+status      : ALREADY_EXISTS
+details     : This user is already checked in.
+problem type: already-checked-in
+request_id  : bb7805a3efab454d
+
+### 6. gRPC failure: unknown user
+status      : NOT_FOUND
+details     : User 'nobody' does not exist.
+problem type: not-found
+request_id  : 7430a4ecd1a6455d
+
+### 7. gRPC deadline: 0.2 s deadline, server delayed 600 ms
+status      : DEADLINE_EXCEEDED
+details     : Deadline Exceeded
+request_id  : f702c8f1ceec40d2
+
+### 8. HTTP: u13 was checked in over gRPC -> 409
+{"type": "https://attendance.local/problems/already-checked-in", "title": "Already checked in", "status": 409, "detail": "This user is already checked in.", "instance": "/api/v1/attendance", "request_id": "3855532d-a698-401b-9cdd-2b2cad4d67f1", "trace_id": "6aaa11b1ec439dbf6e3889f8cc5cba1c"}

@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package attendance.v1;
+
+// gRPC version of the CHECK-IN operation. It follows the same business rules
+// as POST /api/v1/attendance because both call attendance_core.AttendanceService.
+service AttendanceService {
+  // Unary RPC: one request message in, one response message out.
+  rpc CheckIn(CheckInRequest) returns (CheckInResponse);
+}
+
+enum ScanMethod {
+  SCAN_METHOD_UNSPECIFIED = 0;   // proto3 requires a zero value; we reject it
+  SCAN_METHOD_FACE = 1;
+  SCAN_METHOD_FINGERPRINT = 2;
+  SCAN_METHOD_VOICE = 3;
+}
+
+enum AttendanceStatus {
+  ATTENDANCE_STATUS_UNSPECIFIED = 0;
+  ATTENDANCE_STATUS_ON_TIME = 1;
+  ATTENDANCE_STATUS_LATE = 2;
+}
+
+message CheckInRequest {
+  string user_id = 1;
+  ScanMethod method = 2;
+  // Same meaning as the HTTP Idempotency-Key header: repeating a request with
+  // the same key returns the original result instead of checking in twice.
+  string idempotency_key = 3;
+}
+
+message CheckInResponse {
+  string session_id = 1;
+  string user_id = 2;
+  AttendanceStatus status = 3;
+  ScanMethod method = 4;
+  string checked_in_at = 5;   // RFC 3339 timestamp, same as the HTTP version
+  bool replayed = 6;          // true if answered from a stored (idempotent) result
+}

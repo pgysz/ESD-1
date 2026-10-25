@@ -1,0 +1,377 @@
+openapi: 3.0.3
+info:
+  title: Biometric Attendance API
+  version: 1.0.0
+  description: |
+    HTTP API of the simulated biometric attendance system (Assignment 2).
+
+    * Resources: **users** and **attendance sessions**. Checking in creates an
+      attendance session; checking out closes it.
+    * Every error uses `application/problem+json` (RFC 9457).
+    * `POST /attendance` accepts an `Idempotency-Key` header: repeating the
+      request with the same key returns the original result.
+    * `POST /users` is rate limited (see the 429 response).
+    * Operational endpoints (`/api/health`, `/metrics`) and the docs pages are
+      intentionally not described here.
+servers:
+  - url: http://localhost:5000
+tags:
+  - name: users
+  - name: attendance
+  - name: experiments
+    description: Endpoint kept from the Assignment 1 cardinality experiment.
+
+paths:
+  /api/v1/users:
+    get:
+      tags: [users]
+      summary: List enrolled users
+      operationId: listUsers
+      responses:
+        '200':
+          description: All users.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/UserList'}
+    post:
+      tags: [users]
+      summary: Enroll (sign up) a new user
+      operationId: createUser
+      description: Rate limited per client IP.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CreateUserRequest'}
+            example: {name: Talal Ahmed}
+      responses:
+        '201':
+          description: User created.
+          headers:
+            Location: {$ref: '#/components/headers/Location'}
+            RateLimit-Limit: {$ref: '#/components/headers/RateLimitLimit'}
+            RateLimit-Remaining: {$ref: '#/components/headers/RateLimitRemaining'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/User'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503':
+          description: Enrollment storage temporarily unavailable (simulated). Safe to retry later.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+
+  /api/v1/users/{user_id}:
+    get:
+      tags: [users]
+      summary: Get one user
+      operationId: getUser
+      parameters:
+        - {$ref: '#/components/parameters/UserId'}
+      responses:
+        '200':
+          description: The user.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/User'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+
+  /api/v1/attendance:
+    get:
+      tags: [attendance]
+      summary: List attendance sessions
+      operationId: listAttendance
+      parameters:
+        - name: state
+          in: query
+          schema: {type: string, enum: [open, closed]}
+        - name: user_id
+          in: query
+          schema: {type: string}
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 500, default: 100}
+      responses:
+        '200':
+          description: Matching sessions, newest first.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SessionList'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+    post:
+      tags: [attendance]
+      summary: Check in (creates an attendance session)
+      operationId: checkIn
+      description: |
+        Runs a (simulated) biometric scan, then opens an attendance session.
+        Send an `Idempotency-Key` so the request is safe to retry: a repeat
+        with the same key and body returns the original response with
+        `Idempotent-Replayed: true`; the same key with a different body is
+        rejected with 422.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: {type: string, minLength: 1, maxLength: 128}
+          example: 7d9f3c1e-checkin-001
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CheckInRequest'}
+            example: {user_id: u1, method: face}
+      responses:
+        '201':
+          description: Checked in (or the stored result of an earlier identical request).
+          headers:
+            Location: {$ref: '#/components/headers/Location'}
+            Idempotent-Replayed:
+              description: '"true" when this response was replayed from a stored result.'
+              schema: {type: string, enum: ['true']}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401':
+          description: The biometric scan did not match. Scan again.
+          headers:
+            WWW-Authenticate:
+              schema: {type: string}
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409':
+          description: The user is already checked in.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+        '422':
+          description: The Idempotency-Key was already used with a different request body.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+
+  /api/v1/attendance/{session_id}:
+    parameters:
+      - {$ref: '#/components/parameters/SessionId'}
+    get:
+      tags: [attendance]
+      summary: Get one attendance session
+      operationId: getAttendance
+      responses:
+        '200':
+          description: The session.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+    patch:
+      tags: [attendance]
+      summary: Check out (closes the attendance session)
+      operationId: checkOut
+      description: |
+        Naturally idempotent: checking out a session that is already closed
+        returns that closed session (with `Idempotent-Replayed: true`) and does
+        not act a second time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/CheckOutRequest'}
+            example: {state: closed, method: face}
+      responses:
+        '200':
+          description: The closed session.
+          headers:
+            Idempotent-Replayed:
+              schema: {type: string, enum: ['true']}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Session'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401':
+          description: The biometric scan did not match. Scan again.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+
+  /api/v1/events:
+    get:
+      tags: [attendance]
+      summary: Recent activity (newest first)
+      operationId: listEvents
+      parameters:
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+      responses:
+        '200':
+          description: Recent events.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EventList'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+
+  /api/demo/scan:
+    post:
+      tags: [experiments]
+      summary: Assignment 1 cardinality-experiment endpoint (unchanged)
+      operationId: demoScan
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                request_id: {type: string}
+      responses:
+        '200':
+          description: Recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id: {type: string}
+                  recorded: {type: boolean}
+
+components:
+  parameters:
+    UserId:
+      name: user_id
+      in: path
+      required: true
+      schema: {type: string}
+      example: u1
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema: {type: string}
+  headers:
+    Location:
+      description: URL of the created resource.
+      schema: {type: string}
+    RateLimitLimit:
+      description: Requests allowed per window.
+      schema: {type: integer}
+    RateLimitRemaining:
+      description: Requests left in the current window.
+      schema: {type: integer}
+  responses:
+    BadRequest:
+      description: Invalid input. `errors` lists each offending field.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    NotFound:
+      description: The resource does not exist.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    UnsupportedMediaType:
+      description: The body must be sent as application/json.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    TooManyRequests:
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          description: Seconds until the oldest counted request leaves the window.
+          schema: {type: integer}
+        RateLimit-Limit: {$ref: '#/components/headers/RateLimitLimit'}
+        RateLimit-Remaining: {$ref: '#/components/headers/RateLimitRemaining'}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+  schemas:
+    User:
+      type: object
+      required: [user_id, name]
+      properties:
+        user_id: {type: string, example: u1}
+        name: {type: string, example: Ali Raza}
+    UserList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/User'}
+        count: {type: integer}
+    CreateUserRequest:
+      type: object
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 80}
+    CheckInRequest:
+      type: object
+      required: [user_id, method]
+      properties:
+        user_id: {type: string, example: u1}
+        method: {type: string, enum: [face, fingerprint, voice]}
+    CheckOutRequest:
+      type: object
+      required: [state, method]
+      properties:
+        state: {type: string, enum: [closed]}
+        method: {type: string, enum: [face, fingerprint, voice]}
+    Session:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        user_id: {type: string}
+        state: {type: string, enum: [open, closed]}
+        status: {type: string, enum: [on_time, late]}
+        check_in_method: {type: string, enum: [face, fingerprint, voice]}
+        checked_in_at: {type: string, format: date-time}
+        checked_out_at: {type: string, format: date-time, nullable: true}
+        check_out_method: {type: string, nullable: true}
+    SessionList:
+      type: object
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/Session'}
+        count: {type: integer}
+    EventList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              type: {type: string}
+              user_id: {type: string, nullable: true}
+              method: {type: string, nullable: true}
+              status: {type: string, nullable: true}
+              reason: {type: string, nullable: true}
+              timestamp: {type: string, format: date-time}
+        count: {type: integer}
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: {type: string, format: uri}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+        request_id: {type: string}
+        trace_id: {type: string}
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: {type: string}
+              message: {type: string}

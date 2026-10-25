@@ -1,0 +1,19 @@
+﻿{
+  "index_patterns": ["attendance-logs-*"],
+  "priority": 500,
+  "template": {
+    "settings": {
+      "index.lifecycle.name": "attendance-logs-policy"
+    },
+    "mappings": {
+      "properties": {
+        "time":       { "type": "date" },
+        "service":    { "type": "keyword" },
+        "severity":   { "type": "keyword" },
+        "message":    { "type": "text" },
+        "request_id": { "type": "keyword" },
+        "trace_id":   { "type": "keyword" }
+      }
+    }
+  }
+}

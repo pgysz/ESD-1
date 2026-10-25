@@ -1,0 +1,10 @@
+limit = 5 requests per window (per client IP)
+call  1: 201  remaining=4
+call  2: 201  remaining=3
+call  3: 201  remaining=2
+call  4: 201  remaining=1
+call  5: 201  remaining=0
+call  6: 429  Retry-After=6s  body.title='Too many requests'
+call  7: 429  Retry-After=6s  body.title='Too many requests'
+waiting 6s (the oldest call leaves the window) ...
+after wait: 201  remaining=4

@@ -1,0 +1,6 @@
+-r requirements.txt
+# Needed only to regenerate the gRPC code and to run the tests
+grpcio-tools>=1.66.2,<1.72
+pytest>=8
+PyYAML>=6
+openapi-spec-validator>=0.7

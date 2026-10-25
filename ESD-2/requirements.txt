@@ -1,0 +1,7 @@
+# Runtime dependencies
+Flask==3.0.3
+prometheus-client==0.20.0
+requests==2.32.3
+# A2: gRPC. protobuf is pinned to the 5.x line the generated code was built with.
+grpcio>=1.66.2,<1.72
+protobuf>=5.27.2,<6

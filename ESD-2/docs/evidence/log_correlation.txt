@@ -1,0 +1,6 @@
+## logs/app.log (HTTP process)
+{"time": "2026-10-20T00:31:19.861508+00:00", "service": "attendance-app", "severity": "INFO", "message": "checkin_success method=face status=on_time duration_ms=130.2", "request_id": "http-req-1", "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"}
+
+## logs/grpc.log (gRPC process)
+{"time": "2026-10-20T00:31:20.171390+00:00", "service": "attendance-grpc", "severity": "INFO", "message": "checkin_success method=face status=on_time duration_ms=200.2", "request_id": "24461cfab2d74b76", "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"}
+{"time": "2026-10-20T00:31:20.171585+00:00", "service": "attendance-grpc", "severity": "INFO", "message": "grpc_call method=CheckIn code=OK duration_ms=203.0", "request_id": "24461cfab2d74b76", "trace_id": "4bf92f3577b34da6a3ce929d0e0e4736"}
